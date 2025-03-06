@@ -6,8 +6,14 @@ import com.app.rentalcar.model.User;
 import com.app.rentalcar.repository.RentalRepository;
 import com.app.rentalcar.repository.CarRepository;
 import com.app.rentalcar.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -26,19 +32,24 @@ public class RentalController {
     private UserRepository userRepository;
 
     @GetMapping
+    @Transactional
+    @PreAuthorize("isAuthenticated()")
     public List<Rental> getAllRentals() {
         return rentalRepository.findAll();
     }
 
-    @PostMapping("/{carId}/{username}")
-    public String rentCar(@PathVariable Long carId, @PathVariable String username) {
+    @PostMapping("/{carId}")
+    @Transactional
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<String> rentCar(@PathVariable Long carId) {
+        String userName = SecurityContextHolder.getContext().getAuthentication().getName();
         Car car = carRepository.findById(carId)
-                .orElseThrow(() -> new RuntimeException("Car not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Car not found"));
         if (!car.isAvailable()) {
-            return "Car is not available";
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Car is not available");
         }
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findByUsername(userName)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         Rental rental = new Rental();
         rental.setCar(car);
         rental.setUser(user);
@@ -46,6 +57,6 @@ public class RentalController {
         rentalRepository.save(rental);
         car.setAvailable(false);
         carRepository.save(car);
-        return "Car rented successfully";
+        return ResponseEntity.ok("Car rented successfully");
     }
 }
