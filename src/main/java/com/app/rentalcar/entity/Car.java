@@ -1,28 +1,25 @@
-package com.app.rentalcar.model;
+package com.app.rentalcar.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-
-
+import jakarta.persistence.*;
 
 @Entity
+@Table(name = "cars")
 public class Car {
-
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-
     private String make;
-
-
     private String model;
-
-
     private int year;
+    private boolean available;
+    private int buyPrice;
+    private int rentPriceForDay;
 
-    private boolean available = true;
+
+    @ManyToOne
+    @JoinColumn(name = "rented_by")
+    private User rentedBy;
 
     public Long getId() {
         return id;
@@ -54,4 +51,10 @@ public class Car {
     public void setAvailable(boolean available) {
         this.available = available;
     }
+    public int getBuyPrice() {return buyPrice;}
+    public void setBuyPrice(int buyPrice) {this.buyPrice = buyPrice;}
+    public int getRentPriceForDay() {return rentPriceForDay;}
+    public void setRentPriceForDay(int rentPriceForDay) {this.rentPriceForDay = rentPriceForDay;}
+    public User getRentedBy() { return rentedBy; }
+    public void setRentedBy(User rentedBy) { this.rentedBy = rentedBy; }
 }

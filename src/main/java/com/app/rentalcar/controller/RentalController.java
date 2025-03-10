@@ -1,21 +1,14 @@
 package com.app.rentalcar.controller;
 
-import com.app.rentalcar.model.Rental;
-import com.app.rentalcar.model.Car;
-import com.app.rentalcar.model.User;
-import com.app.rentalcar.repository.RentalRepository;
-import com.app.rentalcar.repository.CarRepository;
-import com.app.rentalcar.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import com.app.rentalcar.dto.RentalRequestDTO;
+import com.app.rentalcar.dto.RentalResponseDTO;
+import com.app.rentalcar.service.RentalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDate;
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -23,40 +16,29 @@ import java.util.List;
 public class RentalController {
 
     @Autowired
-    private RentalRepository rentalRepository;
+    private RentalService rentalService;
 
-    @Autowired
-    private CarRepository carRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @GetMapping
-    @Transactional
-    @PreAuthorize("isAuthenticated()")
-    public List<Rental> getAllRentals() {
-        return rentalRepository.findAll();
+    @PostMapping("/rent/{carId}")
+    public ResponseEntity<RentalResponseDTO> rentCar(@PathVariable Long carId, @RequestParam String username) {
+        RentalResponseDTO rentalResponse = rentalService.rentCar(carId, username);
+        return ResponseEntity.status(HttpStatus.CREATED).body(rentalResponse);
     }
 
-    @PostMapping("/{carId}")
-    @Transactional
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<String> rentCar(@PathVariable Long carId) {
-        String userName = SecurityContextHolder.getContext().getAuthentication().getName();
-        Car car = carRepository.findById(carId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Car not found"));
-        if (!car.isAvailable()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Car is not available");
-        }
-        User user = userRepository.findByUsername(userName)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        Rental rental = new Rental();
-        rental.setCar(car);
-        rental.setUser(user);
-        rental.setRentalDate(LocalDate.now());
-        rentalRepository.save(rental);
-        car.setAvailable(false);
-        carRepository.save(car);
-        return ResponseEntity.ok("Car rented successfully");
+    @PostMapping("/return/{rentalId}")
+    public ResponseEntity<RentalResponseDTO> returnCar(@PathVariable Long rentalId) {
+        RentalResponseDTO rentalResponseDTO = rentalService.returnCar(rentalId);
+        return ResponseEntity.ok(rentalResponseDTO);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<RentalResponseDTO>> getAllRentals() {
+        List<RentalResponseDTO> rentals = rentalService.getAllRentals();
+        return ResponseEntity.ok(rentals);
+    }
+
+    @GetMapping("/user")
+    public ResponseEntity<List<RentalResponseDTO>> getUserRentals(@PathVariable String username) {
+        List<RentalResponseDTO> rentals = rentalService.getRentalsByUser(username);
+        return ResponseEntity.ok(rentals);
     }
 }
